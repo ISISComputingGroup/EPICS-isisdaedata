@@ -1,0 +1,78 @@
+record(longin, "$(P)SVN_VERSION")
+{
+   field(DTYP, "asynInt32")
+   field(INP,  "@asyn(dae,0,0)SVN_VERSION")
+   field(SCAN, "I/O Intr")
+}
+
+record(longin, "$(P)FIRMWARE_VERSION")
+{
+   field(DTYP, "asynInt32")
+   field(INP,  "@asyn(dae,0,0)FIRMWARE_VERSION")
+   field(SCAN, "I/O Intr")
+}
+
+record(waveform, "$(P)CHANNEL_POSITION")
+{
+   field(DTYP, "asynInt32ArrayIn")
+   field(INP,  "@asyn(dae,0,0)CHANNEL_POSITION")
+   field(SCAN, "I/O Intr")
+   field(NELM, "256")
+   field(FTVL, "LONG")
+}
+
+record(waveform, "$(P)CHANNEL_PRESET")
+{
+   field(DTYP, "asynInt32ArrayIn")
+   field(INP,  "@asyn(dae,0,0)CHANNEL_PRESET")
+   field(SCAN, "I/O Intr")
+   field(NELM, "256")
+   field(FTVL, "LONG")
+}
+
+record(waveform, "$(P)DEVICE_LOOKUP")
+{
+   field(DTYP, "asynInt32ArrayIn")
+   field(INP,  "@asyn(dae,0,0)DEVICE_LOOKUP")
+   field(SCAN, "I/O Intr")
+   field(NELM, "256")
+   field(FTVL, "LONG")
+}
+
+record(waveform, "$(P)CHANNEL_POSITION:SP")
+{
+   field(DTYP, "asynInt32ArrayOut")
+   field(INP,  "@asyn(dae,0,0)CHANNEL_POSITION")
+   field(SCAN, "Passive")
+   field(NELM, "256")
+   field(FTVL, "LONG")
+}
+
+record(waveform, "$(P)CHANNEL_PRESET:SP")
+{
+   field(DTYP, "asynInt32ArrayOut")
+   field(INP,  "@asyn(dae,0,0)CHANNEL_PRESET")
+   field(SCAN, "Passive")
+   field(NELM, "256")
+   field(FTVL, "LONG")
+}
+
+record(waveform, "$(P)DEVICE_LOOKUP:SP")
+{
+   field(DTYP, "asynInt32ArrayOut")
+   field(INP,  "@asyn(dae,0,0)DEVICE_LOOKUP")
+   field(SCAN, "Passive")
+   field(NELM, "256")
+   field(FTVL, "LONG")
+}
+
+record(fanout, "$(P)REFRESH")
+{
+    field(SELM, "All")
+    field(LNK1, "$(P)SVN_VERSION")
+    field(LNK2, "$(P)FIRMWARE_VERSION")
+    field(LNK3, "$(P)CHANNEL_POSITION")
+    field(LNK4, "$(P)CHANNEL_PRESET")
+    field(LNK5, "$(P)DEVICE_LOOKUP")
+    field(PINI, "1")
+}
