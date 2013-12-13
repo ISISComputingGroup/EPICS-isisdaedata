@@ -1,4 +1,8 @@
 #include <string>
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <stdexcept>
 #include "convertToString.h"
 
 #ifdef _WIN32
@@ -8,7 +12,7 @@
 template<typename T>
 std::string convertToString(T t)
 {
-    should_never_get_called;
+    throw std::runtime_error("should_never_get_called");
 }
 
 template<>

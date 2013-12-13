@@ -4,6 +4,7 @@
 #include <string>
 #include <list>
 #include <map>
+#include <stdexcept>
 
 #include <cstdio>
 #include <cstdlib>
@@ -11,23 +12,25 @@
 #include <cstdarg>
 #include <cstddef>
 #include <cctype>
-#include <cstdint>
+#include <stdint.h>
 
 #include <osiUnistd.h>
 #include <osiSock.h>
 
 //#include <winsock2.h> // needs to be before windows.h
+#ifdef _WIN32
 #include <WS2tcpip.h>
 
 //#include <windows.h>
 //#include <tchar.h>
-#include <sys/stat.h>
 #include <process.h>
-#include <fcntl.h>
-#include <sys/timeb.h>
-#include <math.h>
 #include <direct.h>
 #include <io.h>
+#endif /* _WIN32 */
+#include <sys/stat.h>
+#include <sys/timeb.h>
+#include <fcntl.h>
+#include <math.h>
 //#include <eh.h>
 #include "asynPortDriver.h"
 //#include <psapi.h>
