@@ -16,6 +16,8 @@
 
 #include <osiUnistd.h>
 #include <osiSock.h>
+#include <epicsMutex.h>
+#include <epicsGuard.h>
 
 //#include <winsock2.h> // needs to be before windows.h
 #ifdef _WIN32
@@ -157,8 +159,9 @@ static const std::string FUNCNAME = "DAEDataUDP";
 		}
 	}
 
-    void DAEDataUDP::readData(unsigned int start_address, int32_t* data, int block_size, asynUser *pasynUser)
+    void DAEDataUDP::readData(unsigned int start_address, int32_t* data, size_t block_size, asynUser *pasynUser)
 	{
+		epicsGuard<epicsMutex> _lock(m_lock);
 		std::string error_message;
 		if (block_size <= 0 || block_size > MAX_BLOCK_SIZE)
 		{
@@ -243,8 +246,9 @@ static const std::string FUNCNAME = "DAEDataUDP";
 		}
 	}
 
-    void DAEDataUDP::writeData(unsigned int start_address, const int32_t* data, int block_size, bool verify, asynUser *pasynUser)
+    void DAEDataUDP::writeData(unsigned int start_address, const int32_t* data, size_t block_size, bool verify, asynUser *pasynUser)
 	{
+		epicsGuard<epicsMutex> _lock(m_lock);
 		std::ostringstream error_message;
 		if (block_size <= 0 || block_size > MAX_BLOCK_SIZE)
 		{

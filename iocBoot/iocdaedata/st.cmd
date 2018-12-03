@@ -11,10 +11,11 @@ cd ${TOP}
 dbLoadDatabase "dbd/daedata.dbd"
 daedata_registerRecordDeviceDriver pdbbase
 
-daedataConfigure("dae","192.168.1.220")
+#daedataConfigure("dae","192.168.1.220")
+daedataConfigure("dae","127.0.0.1")
 
 ## Load record instances
-dbLoadRecords("db/daedata.db","P=$(MYPVPREFIX)")
+dbLoadRecords("db/daedata.db","P=$(MYPVPREFIX),PORT=dae")
 
 cd ${TOP}/iocBoot/${IOC}
 

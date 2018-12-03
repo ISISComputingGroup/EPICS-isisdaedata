@@ -17,15 +17,19 @@ public:
     virtual asynStatus readInt32Array(asynUser *pasynUser, epicsInt32 *value, size_t nElements, size_t *nIn);
     virtual asynStatus writeInt32Array(asynUser *pasynUser, epicsInt32 *value, size_t nElements);
 
+    virtual asynStatus drvUserCreate(asynUser *pasynUser, const char* drvInfo, const char** pptypeName, size_t* psize);
+    virtual asynStatus drvUserDestroy(asynUser *pasynUser);
+
 private:
 
 	DAEDataUDP* m_udp;
+	
+	int P_Address; // int
+	int P_AddressW; // int
+	int P_AddressR; // int
 
-    int P_SVN_VERSION; // int
-	int P_CHANNEL_POSITION; // int array
-	int P_FIRMWARE_VERSION; // int
-	#define FIRST_ISISDAE_PARAM P_SVN_VERSION
-	#define LAST_ISISDAE_PARAM P_FIRMWARE_VERSION
+	#define FIRST_ISISDAE_PARAM P_Address
+	#define LAST_ISISDAE_PARAM P_AddressR
 	
 	void pollerThread();
 	
@@ -38,8 +42,8 @@ private:
 
 #define NUM_ISISDAE_PARAMS (&LAST_ISISDAE_PARAM - &FIRST_ISISDAE_PARAM + 1)
 
-#define P_SVN_VERSIONString				"SVN_VERSION"
-#define P_CHANNEL_POSITIONString		"CHANNEL_POSITION"
-#define P_FIRMWARE_VERSIONString		"FIRMWARE_VERSION"
+#define P_AddressString					"ADDRESS"
+#define P_AddressWString				"ADDRESS_W"
+#define P_AddressRString				"ADDRESS_R"
 
 #endif /* DAEDATADRIVER_H */

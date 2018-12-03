@@ -36,11 +36,15 @@ asynStatus daedataDriver::writeValue(asynUser *pasynUser, const char* functionNa
     int function = pasynUser->reason;
     asynStatus status = asynSuccess;
     const char *paramName = NULL;
+	unsigned address;
 	getParamName(function, &paramName);
 	try
 	{
-		if (function == P_SVN_VERSION)
+		if (function == P_Address)
 		{
+			address = atoi((const char*)pasynUser->userData);
+			m_udp->writeData(address, &value, 1, true, pasynUser);
+			setIntegerParam(P_AddressW, address);
 		}
 		else
 		{
@@ -65,21 +69,18 @@ template<typename T>
 asynStatus daedataDriver::readValue(asynUser *pasynUser, const char* functionName, T* value)
 {
 	int function = pasynUser->reason;
+	unsigned address;
     asynStatus status = asynSuccess;
     const char *paramName = NULL;
 	getParamName(function, &paramName);
 	try
 	{
-		if (function == P_SVN_VERSION)
+		if (function == P_Address)
 		{
-			m_udp->readData(0x0008FFE4, value, 1, pasynUser);
-			setIntegerParam(P_SVN_VERSION, *value);
+			address = atoi((const char*)pasynUser->userData);
+			m_udp->readData(address, value, 1, pasynUser);
+			setIntegerParam(P_AddressR, address);
 		}
-		else if (function == P_FIRMWARE_VERSION)
-		{
-			m_udp->readData(0x0008FFE0, value, 1, pasynUser);
-			setIntegerParam(P_FIRMWARE_VERSION, *value);
-		}	
 		else
 		{
 			throw std::runtime_error("invalid parameter");
@@ -105,19 +106,22 @@ asynStatus daedataDriver::writeArray(asynUser *pasynUser, const char* functionNa
   int function = pasynUser->reason;
   asynStatus status = asynSuccess;
   const char *paramName = NULL;
+	unsigned address;
 	getParamName(function, &paramName);
 
 	try
 	{
-		if (function == P_CHANNEL_POSITION)
+		if (function == P_Address)
 		{
-			m_udp->writeData(0x400, value, nElements, true, pasynUser);
-			doCallbacksInt32Array(value, nElements, P_CHANNEL_POSITION, 0);
+			address = atoi((const char*)pasynUser->userData);
+			m_udp->writeData(address, value, nElements, true, pasynUser);
+			setIntegerParam(P_AddressW, address);
 		}
 		else
 		{
 			throw std::runtime_error("invalid parameter");
 		}
+		callParamCallbacks();
         asynPrint(pasynUser, ASYN_TRACEIO_DRIVER, 
               "%s:%s: function=%d, name=%s\n", 
               driverName, functionName, function, paramName);
@@ -137,20 +141,23 @@ asynStatus daedataDriver::readArray(asynUser *pasynUser, const char* functionNam
 {
   int function = pasynUser->reason;
   asynStatus status = asynSuccess;
+   unsigned address;
   const char *paramName = NULL;
 	getParamName(function, &paramName);
 
 	try
 	{
-		if (function == P_CHANNEL_POSITION)
+		if (function == P_Address)
 		{
-			m_udp->readData(0x400, value, nElements, pasynUser);
-//			doCallbacksInt32Array(value, nElements, P_CHANNEL_POSITION, 0);   nedessary?
+			address = atoi((const char*)pasynUser->userData);
+			m_udp->readData(address, value, nElements, pasynUser);
+			setIntegerParam(P_AddressR, address);
 		}
 		else
 		{
 			throw std::runtime_error("invalid parameter");
 		}
+		callParamCallbacks();
 		*nIn = nElements;
         asynPrint(pasynUser, ASYN_TRACEIO_DRIVER, 
               "%s:%s: function=%d, name=%s\n", 
@@ -194,7 +201,7 @@ asynStatus daedataDriver::writeInt32Array(asynUser *pasynUser, epicsInt32 *value
 /// \param[in] portName @copydoc initArg0
 daedataDriver::daedataDriver(const char *portName, const char* host) 
    : asynPortDriver(portName, 
-                    0, /* maxAddr */ 
+                    1, /* maxAddr */ 
                     NUM_ISISDAE_PARAMS,
                     asynInt32Mask | asynInt32ArrayMask | asynDrvUserMask, /* Interface mask */
                     asynInt32Mask | asynInt32ArrayMask,  /* Interrupt mask */
@@ -208,9 +215,9 @@ daedataDriver::daedataDriver(const char *portName, const char* host)
 
 	m_udp = new DAEDataUDP(host);
 
-	createParam(P_SVN_VERSIONString, asynParamInt32, &P_SVN_VERSION);
-	createParam(P_FIRMWARE_VERSIONString, asynParamInt32, &P_FIRMWARE_VERSION);
-	createParam(P_CHANNEL_POSITIONString, asynParamInt32Array, &P_CHANNEL_POSITION);
+	createParam(P_AddressString, asynParamInt32, &P_Address);
+	createParam(P_AddressWString, asynParamInt32, &P_AddressW);
+	createParam(P_AddressRString, asynParamInt32, &P_AddressR);
 
     // Create the thread for background tasks (not used at present, could be used for I/O intr scanning) 
     if (epicsThreadCreate("isisdaePoller",
@@ -242,6 +249,42 @@ void daedataDriver::pollerThread()
 		epicsThreadSleep(1.0);
 	}
 }	
+
+asynStatus daedataDriver::drvUserCreate(asynUser *pasynUser, const char* drvInfo, const char** pptypeName, size_t* psize)
+{
+   const char *functionName = "drvUserCreate";
+   if (strncmp(drvInfo, "0x", 2) == 0)
+   {
+       pasynUser->reason = P_Address;
+       pasynUser->userData = epicsStrDup(drvInfo);
+       asynPrint(pasynUser, ASYN_TRACE_FLOW,
+          "%s:%s: index=%d address=%s\n", 
+          driverName, functionName, pasynUser->reason, (const char*)pasynUser->userData);
+       return asynSuccess;
+   }
+   else
+   {
+       return asynPortDriver::drvUserCreate(pasynUser, drvInfo, pptypeName, psize);
+   }
+}
+
+asynStatus daedataDriver::drvUserDestroy(asynUser *pasynUser)
+{
+   const char *functionName = "drvUserDestroy";
+   if ( pasynUser->reason == P_Address  )
+   {
+      asynPrint(pasynUser, ASYN_TRACE_FLOW,
+          "%s:%s: index=%d address=%s\n", 
+          driverName, functionName, pasynUser->reason, (const char*)pasynUser->userData);
+      free(pasynUser->userData);
+      pasynUser->userData = NULL;
+      return asynSuccess;
+  }
+  else
+  {
+      return asynPortDriver::drvUserDestroy(pasynUser);
+  }
+}
 
 extern "C" {
 
