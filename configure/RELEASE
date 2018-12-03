@@ -6,4 +6,5 @@ include $(TOP)/../../../ISIS_CONFIG
 
 # Local dependencies
 ASYN=$(SUPPORT)/asyn/master
+ONCRPC=$(SUPPORT)/oncrpc/master
 DEVIOCSTATS=$(SUPPORT)/devIocStats/master

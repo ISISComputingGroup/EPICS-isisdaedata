@@ -22,6 +22,8 @@ DBD += daedata.dbd
 
 # daedata.dbd will be made up from these files:
 daedata_DBD += base.dbd
+daedata_DBD += asyn.dbd
+daedata_DBD += daedataSupport.dbd
 
 # Include dbd files from all support applications:
 #daedata_DBD += xxx.dbd
