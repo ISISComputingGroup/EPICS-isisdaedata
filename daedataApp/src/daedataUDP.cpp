@@ -58,7 +58,7 @@ struct read_recv
 {
 	int32_t start_addr;
 	int16_t block_size; // up to MAX_BLOCK_SIZE
-	int32_t data[MAX_BLOCK_SIZE];
+	uint32_t data[MAX_BLOCK_SIZE];
 	void flip_endian()
 	{
 		start_addr = ntohl(start_addr);
@@ -74,8 +74,8 @@ struct write_send
 {
 	int32_t start_addr;
 	int16_t block_size; // up to MAX_BLOCK_SIZE
-	int32_t data[MAX_BLOCK_SIZE];
-	write_send(int32_t a, int16_t b, const int32_t* d) : start_addr(htonl(a)), block_size(htons(b)) { for(int i=0; i<b; ++i) { data[i] = htonl(d[i]); } }
+	uint32_t data[MAX_BLOCK_SIZE];
+	write_send(int32_t a, int16_t b, const uint32_t* d) : start_addr(htonl(a)), block_size(htons(b)) { for(int i=0; i<b; ++i) { data[i] = htonl(d[i]); } }
 	int byteSize() { return 4 + 2 + 4 * ntohs(block_size); } 
 };
 
@@ -102,7 +102,7 @@ static const std::string FUNCNAME = "DAEDataUDP";
 			throw std::runtime_error(std::string(FUNCNAME) + ": Bad IP address : " + host);
 		}
 	    m_sock_recv = epicsSocketCreate(PF_INET, SOCK_DGRAM, 0);
-		if (m_sock_recv < 0)
+		if (m_sock_recv == INVALID_SOCKET)
 		{
 				throw std::runtime_error(std::string(FUNCNAME) + ": Can't create recv socket: " + socket_errmsg());
 		}
@@ -113,7 +113,7 @@ static const std::string FUNCNAME = "DAEDataUDP";
 			throw std::runtime_error(std::string(FUNCNAME) + ": bind failed: " + error_msg);
 		}
 	    m_sock_send = epicsSocketCreate(PF_INET, SOCK_DGRAM, 0);
-		if (m_sock_send < 0)
+		if (m_sock_send == INVALID_SOCKET)
 		{
 			epicsSocketDestroy(m_sock_recv);
 			throw std::runtime_error(std::string(FUNCNAME) + ": Can't create send socket: " + socket_errmsg());
@@ -122,11 +122,11 @@ static const std::string FUNCNAME = "DAEDataUDP";
 	
 	DAEDataUDP::~DAEDataUDP()
 	{
-		if (-1 != m_sock_recv)
+		if (INVALID_SOCKET != m_sock_recv)
 		{
 			epicsSocketDestroy(m_sock_recv);
 		}
-		if (-1 != m_sock_send)
+		if (INVALID_SOCKET != m_sock_send)
 		{
 			epicsSocketDestroy(m_sock_send);
 		}
@@ -159,7 +159,7 @@ static const std::string FUNCNAME = "DAEDataUDP";
 		}
 	}
 
-    void DAEDataUDP::readData(unsigned int start_address, int32_t* data, size_t block_size, asynUser *pasynUser)
+    void DAEDataUDP::readData(unsigned int start_address, uint32_t* data, size_t block_size, asynUser *pasynUser)
 	{
 		epicsGuard<epicsMutex> _lock(m_lock);
 		std::string error_message;
@@ -246,7 +246,7 @@ static const std::string FUNCNAME = "DAEDataUDP";
 		}
 	}
 
-    void DAEDataUDP::writeData(unsigned int start_address, const int32_t* data, size_t block_size, bool verify, asynUser *pasynUser)
+    void DAEDataUDP::writeData(unsigned int start_address, const uint32_t* data, size_t block_size, bool verify, asynUser *pasynUser)
 	{
 		epicsGuard<epicsMutex> _lock(m_lock);
 		std::ostringstream error_message;
@@ -272,7 +272,7 @@ static const std::string FUNCNAME = "DAEDataUDP";
 		}
 		if (verify)
 		{
-			int32_t* data_rb = new int32_t[block_size];
+			uint32_t* data_rb = new uint32_t[block_size];
 			readData(start_address, data_rb, block_size, pasynUser);
 			for(int i=0; i<block_size; ++i)
 			{

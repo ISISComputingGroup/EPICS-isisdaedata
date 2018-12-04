@@ -8,7 +8,7 @@ include $(TOP)/configure/CONFIG
 
 LIBRARY_IOC += daedataSupport
 
-daedataSupport_SRCS += daedataDriver.cpp convertToString.cpp daedataUDP.cpp
+daedataSupport_SRCS += daedataDriver.cpp convertToString.cpp daedataUDP.cpp ADCControl.c
 daedataSupport_LIBS += asyn
 daedataSupport_LIBS += $(EPICS_BASE_IOC_LIBS)
 daedataSupport_SYS_LIBS_WIN32 += ws2_32
@@ -29,7 +29,7 @@ daedata_DBD += daedataSupport.dbd
 #daedata_DBD += xxx.dbd
 
 # Add all the support libraries needed by this IOC
-daedata_LIBS += devIocStats
+#daedata_LIBS += devIocStats
 
 # daedata_registerRecordDeviceDriver.cpp derives from daedata.dbd
 daedata_SRCS += daedata_registerRecordDeviceDriver.cpp
@@ -42,6 +42,7 @@ daedata_SRCS_vxWorks += -nil-
 #daedata_OBJS_vxWorks += $(EPICS_BASE_BIN)/vxComLibrary
 
 daedata_LIBS += daedataSupport asyn
+daedata_LIBS_WIN32 += oncrpc
  
 # Finally link to the EPICS Base libraries
 daedata_LIBS += $(EPICS_BASE_IOC_LIBS)

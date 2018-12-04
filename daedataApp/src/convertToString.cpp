@@ -30,3 +30,11 @@ std::string convertToString(int t)
 	snprintf(buffer, sizeof(buffer), "%d", t);
     return buffer;
 }
+
+template<>
+std::string convertToString(unsigned int t)
+{
+    char buffer[30];
+	snprintf(buffer, sizeof(buffer), "%u", t);
+    return buffer;
+}

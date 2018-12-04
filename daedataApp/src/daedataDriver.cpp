@@ -176,22 +176,81 @@ asynStatus daedataDriver::readArray(asynUser *pasynUser, const char* functionNam
 
 asynStatus daedataDriver::writeInt32(asynUser *pasynUser, epicsInt32 value)
 {
-	return writeValue(pasynUser, "writeInt32", value);
+	return writeValue(pasynUser, "writeInt32", (epicsUInt32)value);
 }
 
 asynStatus daedataDriver::readInt32(asynUser *pasynUser, epicsInt32 *value)
 {
-	return readValue(pasynUser, "readInt32", value);
+	return readValue(pasynUser, "readInt32", (epicsUInt32*)value);
 }
 
 asynStatus daedataDriver::readInt32Array(asynUser *pasynUser, epicsInt32 *value, size_t nElements, size_t *nIn)
 {
-    return readArray(pasynUser, "readInt32Array", value, nElements, nIn);
+    return readArray(pasynUser, "readInt32Array", (epicsUInt32*)value, nElements, nIn);
 }
 
 asynStatus daedataDriver::writeInt32Array(asynUser *pasynUser, epicsInt32 *value, size_t nElements)
 {
-    return writeArray(pasynUser, "writeInt32Array", value, nElements);
+    return writeArray(pasynUser, "writeInt32Array", (epicsUInt32*)value, nElements);
+}
+
+asynStatus daedataDriver::readInt16Array(asynUser *pasynUser, epicsInt16 *value, size_t nElements, size_t *nIn)
+{
+  static const char* functionName = "readInt16Array";
+  int function = pasynUser->reason;
+  const char *paramName = NULL;
+  asynStatus status;
+	getParamName(function, &paramName);
+	*nIn = 0;
+	if (nElements % 2 == 0)
+	{
+		size_t nIn32 = 0;
+		epicsInt32* tmpval = new epicsInt32[nElements / 2];
+		if ( (status = readArray(pasynUser, functionName, (epicsUInt32*)tmpval, nElements / 2, &nIn32)) == asynSuccess )
+		{
+//			for(int i=0, j =0; i<nIn32; ++i, j += 2)
+//			{
+//		        value[j] = (tmpval[i] >> 16) & 0xffff;
+//		        value[j+1] = tmpval[i] & 0xffff;
+//			}
+			memcpy(value, tmpval, nIn32 * sizeof(epicsInt32));
+		    *nIn = nIn32 * 2;
+		}
+		delete[] tmpval;
+		return status;
+	}
+	else
+	{
+        epicsSnprintf(pasynUser->errorMessage, pasynUser->errorMessageSize, 
+                  "%s:%s: function=%d, name=%s, error=%s", 
+                  driverName, functionName, function, paramName, "nElements must be even");
+		return asynError;		
+	}
+}
+
+asynStatus daedataDriver::writeInt16Array(asynUser *pasynUser, epicsInt16 *value, size_t nElements)
+{
+  static const char* functionName = "writeInt16Array";
+  int function = pasynUser->reason;
+  const char *paramName = NULL;
+  asynStatus status;
+	getParamName(function, &paramName);
+	if (nElements % 2 == 0)
+	{
+		size_t nOut32 = nElements / 2;
+		epicsInt32* tmpval = new epicsInt32[nOut32];
+		memcpy(tmpval, value, nOut32 * sizeof(epicsInt32));
+		status = writeArray(pasynUser, functionName, (epicsUInt32*)tmpval, nOut32);
+		delete[] tmpval;
+		return status;
+	}
+	else
+	{
+        epicsSnprintf(pasynUser->errorMessage, pasynUser->errorMessageSize, 
+                  "%s:%s: function=%d, name=%s, error=%s", 
+                  driverName, functionName, function, paramName, "nElements must be even");
+		return asynError;		
+	}
 }
 
 
@@ -203,8 +262,8 @@ daedataDriver::daedataDriver(const char *portName, const char* host)
    : asynPortDriver(portName, 
                     1, /* maxAddr */ 
                     NUM_ISISDAE_PARAMS,
-                    asynInt32Mask | asynInt32ArrayMask | asynDrvUserMask, /* Interface mask */
-                    asynInt32Mask | asynInt32ArrayMask,  /* Interrupt mask */
+                    asynInt32Mask | asynInt32ArrayMask | asynInt16ArrayMask | asynDrvUserMask, /* Interface mask */
+                    asynInt32Mask | asynInt32ArrayMask | asynInt16ArrayMask,  /* Interrupt mask */
                     ASYN_CANBLOCK , /* asynFlags.  This driver can block but it is not multi-device */
                     1, /* Autoconnect */
                     0, /* Default priority */

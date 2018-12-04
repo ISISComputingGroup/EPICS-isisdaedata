@@ -12,30 +12,64 @@ record(longin, "$(P)ADDRESS:R")
    field(SCAN, "I/O Intr")
 }
 
-record(longin, "$(P)BEMAX:FW0")
+record(longin, "$(P)BE:MAX:FW0")
 {
    field(DTYP, "asynInt32")
    field(INP,  "@asyn($(PORT),0,0)0x1000")
    field(SCAN, "1 second")
 }
 
-record(longin, "$(P)BEMAX:FW1")
+record(longin, "$(P)BE:MAX:FW1")
 {
    field(DTYP, "asynInt32")
    field(INP,  "@asyn($(PORT),0,0)0x1004")
    field(SCAN, "1 second")
 }
 
-record(longin, "$(P)BEMAX:SVN0")
+record(longin, "$(P)BE:MAX:SVN0")
 {
    field(DTYP, "asynInt32")
    field(INP,  "@asyn($(PORT),0,0)0x1008")
    field(SCAN, "1 second")
 }
 
-record(longin, "$(P)BEMAX:SVN1")
+record(longin, "$(P)BE:MAX:SVN1")
 {
    field(DTYP, "asynInt32")
    field(INP,  "@asyn($(PORT),0,0)0x100C")
    field(SCAN, "1 second")
+}
+
+# FPGA0 setup regs
+record(waveform, "$(P)FE:FPGA:DSP32:0")
+{
+   field(DTYP, "asynInt32ArrayIn")
+   field(INP,  "@asyn($(PORT),0,0)0x10004")
+   field(FTVL, "ULONG")
+   field(NELM, 8)
+   field(SCAN, "1 second")
+   field(FLNK, "$(P)FE:FPGA:DSP:0:REG.PROC")
+}
+
+record(waveform, "$(P)FE:FPGA:DSP16:0")
+{
+   field(DTYP, "asynInt16ArrayIn")
+   field(INP,  "@asyn($(PORT),0,0)0x10004")
+   field(FTVL, "USHORT")
+   field(NELM, 16)
+   field(SCAN, "1 second")
+}
+
+record(longin, "$(P)FE:FPGA:DSP:0:SPECSEL")
+{
+}
+
+record(aSub, "$(P)FE:FPGA:DSP:0:REG")
+{
+    field(SNAM, "ADCReadControlReg")
+	field(INPA, "$(P)FE:FPGA:DSP32:0 NPP")
+	field(FTA, "ULONG")
+	field(NOA, 8)
+	field(FTVA, "LONG")
+	field(OUTA, "$(P)FE:FPGA:DSP:0:SPECSEL PP")
 }
