@@ -93,7 +93,7 @@ static const char* socket_errmsg()
 static const std::string FUNCNAME = "DAEDataUDP";
 
 	
-  DAEDataUDP::DAEDataUDP(const char* host) : m_host(host), m_sock_send(-1), m_sock_recv(-1)
+  DAEDataUDP::DAEDataUDP(const char* host, bool simulate) : m_host(host), m_simulate(simulate), m_sock_send(-1), m_sock_recv(-1)
 	{
 		if ( (aToIPAddr(host, 10000, &m_sa_read_send) < 0) ||
 			 (aToIPAddr("0.0.0.0", 10000, &m_sa_read_recv) < 0) ||
@@ -161,13 +161,29 @@ static const std::string FUNCNAME = "DAEDataUDP";
 
     void DAEDataUDP::readData(unsigned int start_address, uint32_t* data, size_t block_size, asynUser *pasynUser)
 	{
+		for(int i=0; i<block_size; ++i)
+		{
+		    readDataImpl(start_address + 4 * i, data + i, 1, pasynUser);
+		}
+	}
+	
+    void DAEDataUDP::readDataImpl(unsigned int start_address, uint32_t* data, size_t block_size, asynUser *pasynUser)
+	{
 		epicsGuard<epicsMutex> _lock(m_lock);
-		std::string error_message;
+		std::ostringstream error_message;
 		if (block_size <= 0 || block_size > MAX_BLOCK_SIZE)
 		{
-			error_message = FUNCNAME + ": Block size error";
-			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.c_str());
-			throw std::runtime_error(error_message);
+			error_message << FUNCNAME << ": Block size error " << block_size;
+			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.str().c_str());
+			throw std::runtime_error(error_message.str());
+		}
+		if (m_simulate)
+		{
+		    for(int i=0; i<block_size; ++i)
+		    {
+		        data[i] = start_address + 4 * i;
+		    }
+			return;
 		}
 		read_send rs(start_address, block_size);
 		read_recv rr;
@@ -175,15 +191,15 @@ static const std::string FUNCNAME = "DAEDataUDP";
 		int stat = sendto(m_sock_send, (char*)&rs, sizeof(rs), 0, (struct sockaddr *) &m_sa_read_send, sizeof(m_sa_read_send));
 		if (stat < 0)
 		{
-			error_message = FUNCNAME + ": cannot send: " + socket_errmsg();
-			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.c_str());
-			throw std::runtime_error(error_message);
+			error_message << FUNCNAME << ": cannot send: " << socket_errmsg();
+			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.str().c_str());
+			throw std::runtime_error(error_message.str());
 		}
 		else if (stat != sizeof(rs))
 		{
-			error_message = FUNCNAME + ": send size error ";
-			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.c_str());
-			throw std::runtime_error(error_message);
+			error_message << FUNCNAME << ": send size error: " << stat << " != " << sizeof(rs);
+			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.str().c_str());
+			throw std::runtime_error(error_message.str());
 		}
 		fd_set reply_fds;
 		struct timeval wait_time;
@@ -196,48 +212,47 @@ static const std::string FUNCNAME = "DAEDataUDP";
 		stat = select((int)m_sock_recv + 1, &reply_fds, NULL, NULL, &wait_time); // nfds parameter is ignored on Windows, so cast to avoid warning 
 		if (stat == 0) 
 		{
-			error_message = FUNCNAME + ": select timeout";
-			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.c_str());
-			throw std::runtime_error(error_message);
+			error_message << FUNCNAME << ": select timeout reading address 0x" << std::hex << start_address;
+			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.str().c_str());
+			throw std::runtime_error(error_message.str());
 		} 
 		else if (stat < 0)
 		{
-			error_message = FUNCNAME + ": cannot select: " + socket_errmsg();
-			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.c_str());
-			throw std::runtime_error(error_message);
+			error_message << FUNCNAME << ": cannot select: " << socket_errmsg();
+			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.str().c_str());
+			throw std::runtime_error(error_message.str());
 		}
 		stat = recvfrom(m_sock_recv, (char*)&rr, sizeof(rr), 0, (struct sockaddr *)&reply_sa, &reply_sa_len);
 		if (stat < 0)
 		{
-			error_message = FUNCNAME + ": cannot recvfrom: " + socket_errmsg();
-			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.c_str());
-			throw std::runtime_error(error_message);
+			error_message << FUNCNAME << ": cannot recvfrom: " << socket_errmsg();
+			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.str().c_str());
+			throw std::runtime_error(error_message.str());
 		}
 		else if (stat != 6+4*block_size)
 		{
-			error_message = FUNCNAME + ": recvfrom incorrect size ";
-			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.c_str());
-			asynPrint(pasynUser, ASYN_TRACE_ERROR, "size %d != %d", stat, sizeof(rr));
-			throw std::runtime_error(error_message);
+			error_message << FUNCNAME << ": recvfrom incorrect size: " << stat << " != " << 6+4*block_size << " for address 0x" << std::hex << start_address;
+			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.str().c_str());
+			throw std::runtime_error(error_message.str());
 		}
 //		if (reply_sa.sin_port != htons(10002) reply from wrong port
 		if (reply_sa.sin_addr.s_addr != m_sa_read_send.sin_addr.s_addr)
 		{
-			error_message = FUNCNAME + ": reply from wrong host " + inet_ntoa(reply_sa.sin_addr);
-			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.c_str());
-			throw std::runtime_error(error_message);
+			error_message << FUNCNAME << ": reply from wrong host " << inet_ntoa(reply_sa.sin_addr);
+			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.str().c_str());
+			throw std::runtime_error(error_message.str());
 		}
 		if (rr.start_addr != rs.start_addr)
 		{
-			error_message = FUNCNAME + ": Mismatch in returned memory start addresss";
-			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.c_str());
-			throw std::runtime_error(error_message);
+			error_message << FUNCNAME << ": Mismatch in returned memory start addresss";
+			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.str().c_str());
+			throw std::runtime_error(error_message.str());
 		}
 		if (rr.block_size != rs.block_size)
 		{
-			error_message = FUNCNAME + ": Mismatch in returned block size";
-			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.c_str());
-			throw std::runtime_error(error_message);
+			error_message << FUNCNAME << ": Mismatch in returned block size";
+			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.str().c_str());
+			throw std::runtime_error(error_message.str());
 		}
 		rr.flip_endian();
 		for(int i=0; i<block_size; ++i)
@@ -255,6 +270,10 @@ static const std::string FUNCNAME = "DAEDataUDP";
 			error_message << FUNCNAME << ": Block size error";
 			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.str().c_str());
 			throw std::runtime_error(error_message.str());
+		}
+		if (m_simulate)
+		{
+			return;
 		}
 		write_send ws(start_address, block_size, data);
 		int stat = sendto(m_sock_send, (char*)&ws, ws.byteSize(), 0, (struct sockaddr *) &m_sa_write_send, sizeof(m_sa_write_send));

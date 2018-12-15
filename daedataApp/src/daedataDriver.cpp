@@ -42,7 +42,7 @@ asynStatus daedataDriver::writeValue(asynUser *pasynUser, const char* functionNa
 	{
 		if (function == P_Address)
 		{
-			address = atoi((const char*)pasynUser->userData);
+			address = strtoul((const char*)pasynUser->userData, NULL, 0);
 			m_udp->writeData(address, &value, 1, true, pasynUser);
 			setIntegerParam(P_AddressW, address);
 		}
@@ -77,7 +77,7 @@ asynStatus daedataDriver::readValue(asynUser *pasynUser, const char* functionNam
 	{
 		if (function == P_Address)
 		{
-			address = atoi((const char*)pasynUser->userData);
+			address = strtoul((const char*)pasynUser->userData, NULL, 0);
 			m_udp->readData(address, value, 1, pasynUser);
 			setIntegerParam(P_AddressR, address);
 		}
@@ -113,7 +113,7 @@ asynStatus daedataDriver::writeArray(asynUser *pasynUser, const char* functionNa
 	{
 		if (function == P_Address)
 		{
-			address = atoi((const char*)pasynUser->userData);
+			address = strtoul((const char*)pasynUser->userData, NULL, 0);
 			m_udp->writeData(address, value, nElements, true, pasynUser);
 			setIntegerParam(P_AddressW, address);
 		}
@@ -149,7 +149,7 @@ asynStatus daedataDriver::readArray(asynUser *pasynUser, const char* functionNam
 	{
 		if (function == P_Address)
 		{
-			address = atoi((const char*)pasynUser->userData);
+			address = strtoul((const char*)pasynUser->userData, NULL, 0);
 			m_udp->readData(address, value, nElements, pasynUser);
 			setIntegerParam(P_AddressR, address);
 		}
@@ -258,7 +258,7 @@ asynStatus daedataDriver::writeInt16Array(asynUser *pasynUser, epicsInt16 *value
 /// Calls constructor for the asynPortDriver base class.
 /// \param[in] dcomint DCOM interface pointer created by lvDCOMConfigure()
 /// \param[in] portName @copydoc initArg0
-daedataDriver::daedataDriver(const char *portName, const char* host) 
+daedataDriver::daedataDriver(const char *portName, const char* host, bool simulate) 
    : asynPortDriver(portName, 
                     1, /* maxAddr */ 
                     NUM_ISISDAE_PARAMS,
@@ -272,7 +272,7 @@ daedataDriver::daedataDriver(const char *portName, const char* host)
     const char *functionName = "daedataDriver";
 //	epicsThreadOnce(&onceId, initCOM, NULL);
 
-	m_udp = new DAEDataUDP(host);
+	m_udp = new DAEDataUDP(host, simulate);
 
 	createParam(P_AddressString, asynParamInt32, &P_Address);
 	createParam(P_AddressWString, asynParamInt32, &P_AddressW);
@@ -301,8 +301,6 @@ void daedataDriver::pollerThread()
 	while(false)
 	{
 		lock();
-//		setIntegerParam(P_GoodFrames, m_iface->getGoodFrames());
-        
 		callParamCallbacks();
 		unlock();
 		epicsThreadSleep(1.0);
@@ -356,11 +354,11 @@ extern "C" {
 /// \param[in] progid @copydoc initArg5
 /// \param[in] username @copydoc initArg6
 /// \param[in] password @copydoc initArg7
-int daedataConfigure(const char *portName, const char *host)
+int daedataConfigure(const char *portName, const char *host, int simulate)
 {
 	try
 	{
-			new daedataDriver(portName, host);
+			new daedataDriver(portName, host, (simulate != 0));
 			return(asynSuccess);
 	}
 	catch(const std::exception& ex)
@@ -374,15 +372,17 @@ int daedataConfigure(const char *portName, const char *host)
 
 static const iocshArg initArg0 = { "portName", iocshArgString};			///< The name of the asyn driver port we will create
 static const iocshArg initArg1 = { "host", iocshArgString};				///< host name where LabVIEW is running ("" for localhost) 
+static const iocshArg initArg2 = { "simulate", iocshArgInt};				///< host name where LabVIEW is running ("" for localhost) 
 
 static const iocshArg * const initArgs[] = { &initArg0,
-											 &initArg1 };
+											 &initArg1,
+                                             &initArg2 };
 
 static const iocshFuncDef initFuncDef = {"daedataConfigure", sizeof(initArgs) / sizeof(iocshArg*), initArgs};
 
 static void initCallFunc(const iocshArgBuf *args)
 {
-    daedataConfigure(args[0].sval, args[1].sval);
+    daedataConfigure(args[0].sval, args[1].sval, args[2].ival);
 }
 
 static void daedataRegister(void)

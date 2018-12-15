@@ -1,3 +1,9 @@
+record(bo, "$(P)SIMULATE")
+{
+    field(ZNAM, "NO")
+	field(ONAM, "YES")
+}
+
 record(longin, "$(P)ADDRESS:W")
 {
    field(DTYP, "asynInt32")
@@ -44,6 +50,7 @@ record(longin, "$(P)BE:MAX:SVN1")
 record(waveform, "$(P)FE:FPGA:DSP32:0")
 {
    field(DTYP, "asynInt32ArrayIn")
+   field(SIML, "$(P)SIMULATE")
    field(INP,  "@asyn($(PORT),0,0)0x10004")
    field(FTVL, "ULONG")
    field(NELM, 8)
@@ -51,16 +58,90 @@ record(waveform, "$(P)FE:FPGA:DSP32:0")
    field(FLNK, "$(P)FE:FPGA:DSP:0:REG.PROC")
 }
 
-record(waveform, "$(P)FE:FPGA:DSP16:0")
+# FPGA0 setup regs
+record(waveform, "$(P)FE:FPGA:DSP32:0:W")
 {
-   field(DTYP, "asynInt16ArrayIn")
+   field(DTYP, "asynInt32ArrayOut")
+   field(SIML, "$(P)SIMULATE")
    field(INP,  "@asyn($(PORT),0,0)0x10004")
-   field(FTVL, "USHORT")
-   field(NELM, 16)
-   field(SCAN, "1 second")
+   field(FTVL, "ULONG")
+   field(NELM, 8)
 }
 
-record(longin, "$(P)FE:FPGA:DSP:0:SPECSEL")
+#record(waveform, "$(P)FE:FPGA:DSP16:0")
+#{
+#   field(DTYP, "asynInt16ArrayIn")
+#   field(INP,  "@asyn($(PORT),0,0)0x10004")
+#   field(FTVL, "USHORT")
+#   field(NELM, 16)
+#   field(SCAN, "1 second")
+#}
+
+
+record(mbbi, "$(P)FE:FPGA:DSP:0:SPECSEL")
+{
+    field(ZRVL, 0)
+    field(ONVL, 1)
+    field(TWVL, 2)
+    field(THVL, 3)
+    field(FRVL, 4)
+    field(FVVL, 5)
+    field(SXVL, 6)
+    field(SVVL, 7)
+    field(EIVL, 8)
+    field(NIVL, 9)
+    field(TEVL, 10)
+	field(ZRST, "Counts (0D)")
+    field(ONST, "?")
+    field(TWST, "Pls Ht (1D)")
+    field(THST, "Pls Area (1D)")
+    field(FRST, "Pls Area vs Ht (2D)")
+    field(FVST, "2nd deriv (1D)")
+    field(SXST, "2nd deriv vs. Pos (2D)")
+    field(SVST, "StartSlope (1D)")
+    field(EIST, "Startslope v Pls Ht (2D)")
+	field(NIST, "Max Slope (1D)")
+    field(TEST, "Max Slope v Pls Ht (2D)")
+}
+
+record(longin, "$(P)FE:FPGA:DSP:0:OVFSEL")
+{
+}
+
+record(longin, "$(P)FE:FPGA:DSP:0:DSPGAIN")
+{
+}
+record(longin, "$(P)FE:FPGA:DSP:0:ACCEPTALL")
+{
+}
+record(longin, "$(P)FE:FPGA:DSP:0:LLD")
+{
+}
+record(longin, "$(P)FE:FPGA:DSP:0:SSCUT")
+{
+}
+record(longin, "$(P)FE:FPGA:DSP:0:ULD")
+{
+}
+record(longin, "$(P)FE:FPGA:DSP:0:SDCUT")
+{
+}
+record(longin, "$(P)FE:FPGA:DSP:0:MSCUT")
+{
+}
+record(longin, "$(P)FE:FPGA:DSP:0:PSSEL")
+{
+}
+record(longin, "$(P)FE:FPGA:DSP:0:SSBITS")
+{
+}
+record(longin, "$(P)FE:FPGA:DSP:0:MSBITS")
+{
+}
+record(longin, "$(P)FE:FPGA:DSP:0:SDBITS")
+{
+}
+record(longin, "$(P)FE:FPGA:DSP:0:MISBITS")
 {
 }
 
@@ -71,5 +152,54 @@ record(aSub, "$(P)FE:FPGA:DSP:0:REG")
 	field(FTA, "ULONG")
 	field(NOA, 8)
 	field(FTVA, "LONG")
+	field(FTVB, "LONG")
+	field(FTVC, "LONG")
+	field(FTVD, "LONG")
+	field(FTVE, "LONG")
+	field(FTVF, "LONG")
+	field(FTVG, "LONG")
+	field(FTVH, "LONG")
+	field(FTVI, "LONG")
+	field(FTVJ, "LONG")
+	field(FTVK, "LONG")
+	field(FTVL, "LONG")
+	field(FTVM, "LONG")
+	field(FTVN, "LONG")
 	field(OUTA, "$(P)FE:FPGA:DSP:0:SPECSEL PP")
+	field(OUTB, "$(P)FE:FPGA:DSP:0:OVFSEL PP")
+	field(OUTC, "$(P)FE:FPGA:DSP:0:DSPGAIN PP")
+	field(OUTD, "$(P)FE:FPGA:DSP:0:ACCEPTALL PP")
+	field(OUTE, "$(P)FE:FPGA:DSP:0:LLD PP")
+	field(OUTF, "$(P)FE:FPGA:DSP:0:SSCUT PP")
+	field(OUTG, "$(P)FE:FPGA:DSP:0:ULD PP")
+	field(OUTH, "$(P)FE:FPGA:DSP:0:SDCUT PP")
+	field(OUTI, "$(P)FE:FPGA:DSP:0:MSCUT PP")
+	field(OUTJ, "$(P)FE:FPGA:DSP:0:PSSEL PP")
+	field(OUTK, "$(P)FE:FPGA:DSP:0:SSBITS PP")
+	field(OUTL, "$(P)FE:FPGA:DSP:0:MSBITS PP")
+	field(OUTM, "$(P)FE:FPGA:DSP:0:SDBITS PP")
+	field(OUTN, "$(P)FE:FPGA:DSP:0:MISBITS PP")
+}
+
+record(aSub, "$(P)FE:FPGA:DSP:0:REG:SP")
+{
+    field(SNAM, "ADCWriteControlReg")
+#	field(INPA, "$(P)FE:FPGA:DSP32:0 NPP")
+	field(FTVA, "ULONG")
+	field(NOVA, 8)
+	field(FTA, "LONG")
+	field(FTB, "LONG")
+	field(FTC, "LONG")
+	field(FTD, "LONG")
+	field(FTE, "LONG")
+	field(FTF, "LONG")
+	field(FTG, "LONG")
+	field(FTH, "LONG")
+	field(FTI, "LONG")
+	field(FTJ, "LONG")
+	field(FTK, "LONG")
+	field(FTL, "LONG")
+	field(FTM, "LONG")
+	field(FTN, "LONG")
+	field(OUTA, "$(P)FE:FPGA:DSP32:0:W PP")
 }

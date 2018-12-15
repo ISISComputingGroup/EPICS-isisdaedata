@@ -8,7 +8,7 @@ class DAEDataUDP;
 class daedataDriver : public asynPortDriver 
 {
 public:
-    daedataDriver(const char *portName, const char* host);
+    daedataDriver(const char *portName, const char* host, bool simulate);
  	static void pollerThreadC(void* arg);
                 
     // These are the methods that we override from asynPortDriver
