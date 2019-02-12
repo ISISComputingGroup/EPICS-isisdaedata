@@ -18,7 +18,7 @@ daedataSupport_SYS_LIBS_WIN32 += ws2_32
 
 PROD_IOC = daedata
 # daedata.dbd will be created and installed
-DBD += daedata.dbd
+DBD += daedata.dbd daedataSupport.dbd
 
 # daedata.dbd will be made up from these files:
 daedata_DBD += base.dbd

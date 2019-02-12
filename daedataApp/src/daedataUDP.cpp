@@ -19,8 +19,8 @@
 #include <epicsMutex.h>
 #include <epicsGuard.h>
 
-//#include <winsock2.h> // needs to be before windows.h
 #ifdef _WIN32
+#include <winsock2.h> // needs to be before windows.h
 #include <WS2tcpip.h>
 
 //#include <windows.h>
@@ -93,7 +93,7 @@ static const char* socket_errmsg()
 static const std::string FUNCNAME = "DAEDataUDP";
 
 	
-  DAEDataUDP::DAEDataUDP(const char* host, bool simulate) : m_host(host), m_simulate(simulate), m_sock_send(-1), m_sock_recv(-1)
+  DAEDataUDP::DAEDataUDP(const char* host, bool simulate) : m_host(host), m_simulate(simulate), m_sock_send(-1)
 	{
 		if ( (aToIPAddr(host, 10000, &m_sa_read_send) < 0) ||
 			 (aToIPAddr("0.0.0.0", 10000, &m_sa_read_recv) < 0) ||
@@ -101,16 +101,20 @@ static const std::string FUNCNAME = "DAEDataUDP";
 		{
 			throw std::runtime_error(std::string(FUNCNAME) + ": Bad IP address : " + host);
 		}
-	    m_sock_recv = epicsSocketCreate(PF_INET, SOCK_DGRAM, 0);
 		if (m_sock_recv == INVALID_SOCKET)
 		{
+			m_sock_recv = epicsSocketCreate(PF_INET, SOCK_DGRAM, 0);
+			if (m_sock_recv == INVALID_SOCKET)
+			{
 				throw std::runtime_error(std::string(FUNCNAME) + ": Can't create recv socket: " + socket_errmsg());
-		}
-		if (bind(m_sock_recv, (struct sockaddr *) &m_sa_read_recv, sizeof(m_sa_read_recv)) < 0)
-		{
-			std::string error_msg = socket_errmsg();  // make copy before calling epicsSocketDestroy
-			epicsSocketDestroy(m_sock_recv);
-			throw std::runtime_error(std::string(FUNCNAME) + ": bind failed: " + error_msg);
+			}
+			if (bind(m_sock_recv, (struct sockaddr *) &m_sa_read_recv, sizeof(m_sa_read_recv)) < 0)
+			{
+				std::string error_msg = socket_errmsg();  // make copy before calling epicsSocketDestroy
+				epicsSocketDestroy(m_sock_recv);
+				m_sock_recv = INVALID_SOCKET;
+				throw std::runtime_error(std::string(FUNCNAME) + ": bind failed: " + error_msg);
+			}
 		}
 	    m_sock_send = epicsSocketCreate(PF_INET, SOCK_DGRAM, 0);
 		if (m_sock_send == INVALID_SOCKET)
@@ -125,10 +129,12 @@ static const std::string FUNCNAME = "DAEDataUDP";
 		if (INVALID_SOCKET != m_sock_recv)
 		{
 			epicsSocketDestroy(m_sock_recv);
+			m_sock_recv = INVALID_SOCKET;
 		}
 		if (INVALID_SOCKET != m_sock_send)
 		{
 			epicsSocketDestroy(m_sock_send);
+			m_sock_send = INVALID_SOCKET;
 		}
 	}
 	
@@ -307,3 +313,5 @@ static const std::string FUNCNAME = "DAEDataUDP";
 	}
 
 
+SOCKET DAEDataUDP::m_sock_recv = INVALID_SOCKET;
+epicsMutex DAEDataUDP::m_lock;
