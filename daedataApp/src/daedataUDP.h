@@ -6,13 +6,13 @@ class DAEDataUDP
 private:
     std::string m_host;
 	bool m_simulate;
-	SOCKET m_sock_send;
-	static SOCKET m_sock_recv;
+	SOCKET m_sock_read;
+	SOCKET m_sock_write;
+    epicsMutex m_read_lock;
+    epicsMutex m_write_lock;
 	struct sockaddr_in m_sa_read_send;
 	struct sockaddr_in m_sa_read_recv;
 	struct sockaddr_in m_sa_write_send;
-	static epicsMutex m_lock; // needs to be static as we share m_sock_recv
-
 	void clearSocket(SOCKET fd, asynUser *pasynUser);
     void readDataImpl(unsigned int start_address, uint32_t* data, size_t block_size, asynUser *pasynUser);
 	

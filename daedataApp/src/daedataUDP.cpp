@@ -93,52 +93,65 @@ static const char* socket_errmsg()
 static const std::string FUNCNAME = "DAEDataUDP";
 
 	
-  DAEDataUDP::DAEDataUDP(const char* host, bool simulate) : m_host(host), m_simulate(simulate), m_sock_send(-1)
+  DAEDataUDP::DAEDataUDP(const char* host, bool simulate) : m_host(host), m_simulate(simulate), m_sock_read(INVALID_SOCKET), m_sock_write(INVALID_SOCKET)
 	{
 		if ( (aToIPAddr(host, 10000, &m_sa_read_send) < 0) ||
-			 (aToIPAddr("0.0.0.0", 10000, &m_sa_read_recv) < 0) ||
+		     (aToIPAddr("0.0.0.0", 0, &m_sa_read_recv) < 0) ||
 		     (aToIPAddr(host, 10002, &m_sa_write_send) < 0) )
 		{
 			throw std::runtime_error(std::string(FUNCNAME) + ": Bad IP address : " + host);
 		}
-		if (m_sock_recv == INVALID_SOCKET)
+		if (m_sock_read == INVALID_SOCKET)
 		{
-			m_sock_recv = epicsSocketCreate(PF_INET, SOCK_DGRAM, 0);
-			if (m_sock_recv == INVALID_SOCKET)
+			m_sock_read = epicsSocketCreate(PF_INET, SOCK_DGRAM, 0);
+			if (m_sock_read == INVALID_SOCKET)
 			{
 				throw std::runtime_error(std::string(FUNCNAME) + ": Can't create recv socket: " + socket_errmsg());
 			}
-			if (bind(m_sock_recv, (struct sockaddr *) &m_sa_read_recv, sizeof(m_sa_read_recv)) < 0)
+			if (bind(m_sock_read, (struct sockaddr *) &m_sa_read_recv, sizeof(m_sa_read_recv)) < 0)
 			{
 				std::string error_msg = socket_errmsg();  // make copy before calling epicsSocketDestroy
-				epicsSocketDestroy(m_sock_recv);
-				m_sock_recv = INVALID_SOCKET;
+				epicsSocketDestroy(m_sock_read);
+				m_sock_read = INVALID_SOCKET;
 				throw std::runtime_error(std::string(FUNCNAME) + ": bind failed: " + error_msg);
 			}
+			if (connect(m_sock_read, (struct sockaddr *) &m_sa_read_send, sizeof(m_sa_read_send)) < 0)
+			{
+				std::string error_msg = socket_errmsg();  // make copy before calling epicsSocketDestroy
+				epicsSocketDestroy(m_sock_read);
+				m_sock_read = INVALID_SOCKET;
+				throw std::runtime_error(std::string(FUNCNAME) + ": connect failed: " + error_msg);
+			}
 		}
-	    m_sock_send = epicsSocketCreate(PF_INET, SOCK_DGRAM, 0);
-		if (m_sock_send == INVALID_SOCKET)
+	    m_sock_write = epicsSocketCreate(PF_INET, SOCK_DGRAM, 0);
+		if (m_sock_write == INVALID_SOCKET)
 		{
-			epicsSocketDestroy(m_sock_recv);
+			epicsSocketDestroy(m_sock_write);
 			throw std::runtime_error(std::string(FUNCNAME) + ": Can't create send socket: " + socket_errmsg());
+		}
+		if (connect(m_sock_write, (struct sockaddr *) &m_sa_write_send, sizeof(m_sa_write_send)) < 0)
+		{
+			std::string error_msg = socket_errmsg();  // make copy before calling epicsSocketDestroy
+			epicsSocketDestroy(m_sock_write);
+			m_sock_write = INVALID_SOCKET;
+			throw std::runtime_error(std::string(FUNCNAME) + ": connect failed: " + error_msg);
 		}
 	}
 	
 	DAEDataUDP::~DAEDataUDP()
 	{
-		if (INVALID_SOCKET != m_sock_recv)
+		if (INVALID_SOCKET != m_sock_read)
 		{
-			epicsSocketDestroy(m_sock_recv);
-			m_sock_recv = INVALID_SOCKET;
+			epicsSocketDestroy(m_sock_read);
+			m_sock_read = INVALID_SOCKET;
 		}
-		if (INVALID_SOCKET != m_sock_send)
+		if (INVALID_SOCKET != m_sock_write)
 		{
-			epicsSocketDestroy(m_sock_send);
-			m_sock_send = INVALID_SOCKET;
+			epicsSocketDestroy(m_sock_write);
+			m_sock_write = INVALID_SOCKET;
 		}
 	}
 	
-
     void DAEDataUDP::clearSocket(SOCKET fd, asynUser *pasynUser)
 	{	
 		int n = 1; 
@@ -167,6 +180,7 @@ static const std::string FUNCNAME = "DAEDataUDP";
 
     void DAEDataUDP::readData(unsigned int start_address, uint32_t* data, size_t block_size, asynUser *pasynUser)
 	{
+		epicsGuard<epicsMutex> _lock(m_read_lock);
 		for(int i=0; i<block_size; ++i)
 		{
 		    readDataImpl(start_address + 4 * i, data + i, 1, pasynUser);
@@ -175,7 +189,6 @@ static const std::string FUNCNAME = "DAEDataUDP";
 	
     void DAEDataUDP::readDataImpl(unsigned int start_address, uint32_t* data, size_t block_size, asynUser *pasynUser)
 	{
-		epicsGuard<epicsMutex> _lock(m_lock);
 		std::ostringstream error_message;
 		if (block_size <= 0 || block_size > MAX_BLOCK_SIZE)
 		{
@@ -193,8 +206,8 @@ static const std::string FUNCNAME = "DAEDataUDP";
 		}
 		read_send rs(start_address, block_size);
 		read_recv rr;
-		clearSocket(m_sock_recv, pasynUser);
-		int stat = sendto(m_sock_send, (char*)&rs, sizeof(rs), 0, (struct sockaddr *) &m_sa_read_send, sizeof(m_sa_read_send));
+		clearSocket(m_sock_read, pasynUser);
+		int stat = send(m_sock_read, (char*)&rs, sizeof(rs), 0);
 		if (stat < 0)
 		{
 			error_message << FUNCNAME << ": cannot send: " << socket_errmsg();
@@ -210,12 +223,12 @@ static const std::string FUNCNAME = "DAEDataUDP";
 		fd_set reply_fds;
 		struct timeval wait_time;
 		FD_ZERO(&reply_fds);
-		FD_SET(m_sock_recv, &reply_fds);
+		FD_SET(m_sock_read, &reply_fds);
 		wait_time.tv_sec = 5;
 		wait_time.tv_usec = 0;
 		struct sockaddr_in reply_sa;
 		socklen_t reply_sa_len = sizeof(reply_sa);
-		stat = select((int)m_sock_recv + 1, &reply_fds, NULL, NULL, &wait_time); // nfds parameter is ignored on Windows, so cast to avoid warning 
+		stat = select((int)m_sock_read + 1, &reply_fds, NULL, NULL, &wait_time); // nfds parameter is ignored on Windows, so cast to avoid warning 
 		if (stat == 0) 
 		{
 			error_message << FUNCNAME << ": select timeout reading address 0x" << std::hex << start_address;
@@ -228,7 +241,7 @@ static const std::string FUNCNAME = "DAEDataUDP";
 			asynPrint(pasynUser, ASYN_TRACE_ERROR, error_message.str().c_str());
 			throw std::runtime_error(error_message.str());
 		}
-		stat = recvfrom(m_sock_recv, (char*)&rr, sizeof(rr), 0, (struct sockaddr *)&reply_sa, &reply_sa_len);
+		stat = recvfrom(m_sock_read, (char*)&rr, sizeof(rr), 0, (struct sockaddr *)&reply_sa, &reply_sa_len);
 		if (stat < 0)
 		{
 			error_message << FUNCNAME << ": cannot recvfrom: " << socket_errmsg();
@@ -269,7 +282,7 @@ static const std::string FUNCNAME = "DAEDataUDP";
 
     void DAEDataUDP::writeData(unsigned int start_address, const uint32_t* data, size_t block_size, bool verify, asynUser *pasynUser)
 	{
-		epicsGuard<epicsMutex> _lock(m_lock);
+		epicsGuard<epicsMutex> _lock(m_write_lock);
 		std::ostringstream error_message;
 		if (block_size <= 0 || block_size > MAX_BLOCK_SIZE)
 		{
@@ -282,7 +295,7 @@ static const std::string FUNCNAME = "DAEDataUDP";
 			return;
 		}
 		write_send ws(start_address, block_size, data);
-		int stat = sendto(m_sock_send, (char*)&ws, ws.byteSize(), 0, (struct sockaddr *) &m_sa_write_send, sizeof(m_sa_write_send));
+		int stat = send(m_sock_write, (char*)&ws, ws.byteSize(), 0);
 		if (stat < 0)
 		{
 			error_message << FUNCNAME << ": cannot sendto: " << socket_errmsg();
@@ -311,7 +324,3 @@ static const std::string FUNCNAME = "DAEDataUDP";
 			delete[] data_rb;
 		}
 	}
-
-
-SOCKET DAEDataUDP::m_sock_recv = INVALID_SOCKET;
-epicsMutex DAEDataUDP::m_lock;
